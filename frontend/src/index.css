@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@plugin "daisyui";
+@plugin "daisyui"{
+    themes: pastel --default;
+}
+
+
+/* เอา spin buttons ของ Chrome, Safari */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* เอา spin buttons ของ Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+
+  body {
+  font-family: 'Carlito', sans-serif;
+}

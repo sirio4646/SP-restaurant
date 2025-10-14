@@ -1,0 +1,8 @@
+Flask
+requests
+Flask-SQLAlchemy
+python-dotenv
+Flask-Cors
+gunicorn
+PyMySQL # Add this line
+# Remove: mysql-connector-python
