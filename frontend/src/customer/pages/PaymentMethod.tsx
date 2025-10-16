@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { useAuthStore } from "../../store/authStore";
+import api from "../../utils/axiosConfig";
+import {
+  ArrowLeft,
+  CreditCard,
+  Banknote,
+  QrCode,
+  X,
+  CheckCircle2,
+} from "lucide-react";
 
 interface Order {
   id: number;
@@ -12,226 +19,308 @@ interface Order {
 export default function PaymentPage() {
   const { order_id } = useParams<{ order_id: string }>();
   const navigate = useNavigate();
-  const token = useAuthStore((state) => state.token);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<"qrcode" | "cash" | null>(null);
-  const [generatedQrCodeUrl, setGeneratedQrCodeUrl] = useState<string | null>(null);
+  const [generatedQrCodeUrl, setGeneratedQrCodeUrl] = useState<string | null>(
+    null
+  );
   const [showQrPopup, setShowQrPopup] = useState(false);
 
-  // ดึงข้อมูล order
   const fetchOrder = async () => {
-    if (!token || !order_id) {
-      setError("คุณยังไม่ได้ login หรือ order_id ไม่ถูกต้อง");
+    if (!order_id) {
+      setError("order_id ไม่ถูกต้อง");
       setLoading(false);
       return;
     }
 
     try {
-      const response = await axios.get(
-        `http://localhost:5000/api/orders/${order_id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await api.get(`/orders/${order_id}`);
       setOrder(response.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("ไม่สามารถดึงข้อมูลออเดอร์ได้ หรือออเดอร์ไม่ใช่ของร้านคุณ");
+      if (err.response?.status === 401) {
+        setError("กรุณา login ก่อนใช้งาน");
+      } else {
+        setError("ไม่สามารถดึงข้อมูลออเดอร์ได้");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // จ่ายเงินสด → redirect เลย
   const handleCashPayment = () => {
     alert("ออเดอร์ถูกสร้างแล้ว");
     navigate("/payment-success");
   };
 
-  // ยืนยันการชำระเงิน
   const confirmPayment = () => {
     if (!order || !method) return;
 
     if (method === "cash") {
       handleCashPayment();
     } else if (method === "qrcode") {
-      const promptPayId = "0909634366"; // TODO: เปลี่ยนเป็น env
+      const promptPayId = "0910762733";
       const totalAmountNumber = parseFloat(order.total_amount);
-      const url = `https://promptpay.io/${promptPayId}/${totalAmountNumber.toFixed(2)}.png`;
+      const url = `https://promptpay.io/${promptPayId}/${totalAmountNumber.toFixed(
+        2
+      )}.png`;
       setGeneratedQrCodeUrl(url);
       setShowQrPopup(true);
-
-      // Polling ตรวจสอบ payment_status ทุก 3 วินาที
-      const interval = setInterval(async () => {
-        try {
-          const res = await axios.get(
-            `http://localhost:5000/api/orders/${order.id}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          if (res.data.payment_status === "paid") {
-            clearInterval(interval);
-            setShowQrPopup(false);
-            navigate("/payment-success");
-          }
-        } catch (err) {
-          console.error("Polling error:", err);
-        }
-      }, 5000);
     }
+  };
+
+  const handleManualConfirm = async () => {
+    if (!order) {
+      alert("ไม่พบข้อมูลออเดอร์");
+      return;
+    }
+
+    try {
+      await api.patch(`/orders/${order.id}`, {
+        payment_status: "pending_verification",
+        payment_method: "qrcode",
+      });
+    } catch (err: any) {
+      console.error("Failed to update payment status:", err.response?.data);
+    }
+
+    setShowQrPopup(false);
+    navigate("/payment-success");
   };
 
   useEffect(() => {
     fetchOrder();
-  }, [order_id, token]);
+  }, [order_id]);
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen text-lg font-semibold">
-        กำลังโหลด...
+      <div
+        className="flex justify-center items-center min-h-screen bg-gray-50"
+        style={{ fontFamily: "Carlito, sans-serif" }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#FF6500] border-t-transparent mx-auto mb-4"></div>
+          <div className="text-lg text-gray-600">
+            กำลังโหลดข้อมูลการชำระเงิน...
+          </div>
+        </div>
       </div>
     );
+  }
 
-  if (error || !order)
+  if (error || !order) {
     return (
-      <div className="flex justify-center items-center min-h-screen text-red-500 text-lg font-semibold">
-        {error || "ไม่พบออเดอร์"}
+      <div
+        className="flex flex-col justify-center items-center min-h-screen bg-gray-50 p-6"
+        style={{ fontFamily: "Carlito, sans-serif" }}>
+        <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-2xl text-center">
+          <div className="font-bold text-lg mb-2">เกิดข้อผิดพลาด</div>
+          <div>{error || "ไม่พบออเดอร์"}</div>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              fetchOrder();
+            }}
+            className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition">
+            ลองใหม่
+          </button>
+        </div>
       </div>
     );
+  }
 
   const totalAmountNumber = parseFloat(order.total_amount);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 flex flex-col items-center font-sans text-gray-800">
+    <div
+      className="min-h-screen bg-gray-50 text-gray-800"
+      style={{ fontFamily: "Carlito, sans-serif" }}>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#FFB347] to-[#FF6500] p-6 shadow-lg">
+        <div className="max-w-lg mx-auto">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl transition-all hover:scale-105 shadow-lg mb-4">
+            <ArrowLeft size={20} />
+            กลับ
+          </button>
 
-  {/* ปุ่มย้อนกลับ */}
-  <button
-    onClick={() => navigate(-1)}
-    className="self-start mb-4 flex items-center gap-2 px-4 py-2 bg-[#FFB566] text-white rounded-lg hover:bg-[#FFA559] transition"
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      className="w-6 h-6"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
-      />
-    </svg>
-    กลับ
-  </button>
-
-  <div className="bg-white shadow-xl rounded-3xl p-8 w-full max-w-lg">
-    <h2 className="text-2xl font-bold mb-6 text-center text-[#FF6500]">ชำระเงิน</h2>
-
-    <div className="mb-8 text-center">
-      <p className="text-lg font-medium">ยอดชำระทั้งหมด</p>
-      <p className="text-3xl font-extrabold text-[#FF6500] mt-2">
-        ฿{totalAmountNumber.toFixed(2)}
-      </p>
-    </div>
-
-    <div className="grid grid-cols-1 gap-6">
-      {/* QR Code */}
-      <div
-        className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all transform
-        ${method === "qrcode"
-            ? "border-[#FF6500] bg-[#FFF2E0] shadow-md scale-[1.02]"
-            : "border-gray-300 hover:border-[#FFB566] hover:shadow-sm hover:scale-[1.01]"}`
-        }
-        onClick={() => setMethod("qrcode")}
-      >
-        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4
-        ${method === "qrcode" ? "border-[#FF6500]" : "border-gray-400"}`}>
-          {method === "qrcode" && <div className="w-2.5 h-2.5 bg-[#FF6500] rounded-full"></div>}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <img
-            src="https://www.bot.or.th/content/dam/bot/icons/icon-thaiqr.png"
-            alt="QR Code"
-            className="w-10 h-10 object-contain"
-          />
-          <p className="text-lg font-medium text-gray-800">QR พร้อมเพย์</p>
+          <div className="text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              ชำระเงิน
+            </h1>
+            <div className="flex items-center justify-center gap-2 text-white/90">
+              <CreditCard size={18} />
+              <span className="text-lg">Order #{order.id}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Cash */}
-      <div
-        className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all
-        ${method === "cash"
-            ? "border-[#FF6500] bg-[#FFF2E0] shadow-md scale-[1.02]"
-            : "border-gray-300 hover:border-[#FFB566] hover:shadow-sm hover:scale-[1.01]"}`
-        }
-        onClick={() => setMethod("cash")}
-      >
-        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4
-        ${method === "cash" ? "border-[#FF6500]" : "border-gray-400"}`}>
-          {method === "cash" && <div className="w-2.5 h-2.5 bg-[#FF6500] rounded-full"></div>}
+      <div className="max-w-lg mx-auto p-6">
+        {/* ยอดเงิน */}
+        <div className="bg-white rounded-2xl p-6 shadow-lg mb-6 text-center">
+          <h2 className="text-lg font-semibold text-gray-700 mb-2">
+            ยอดชำระทั้งหมด
+          </h2>
+          <div className="text-4xl font-bold text-[#FF6500] mb-4">
+            ฿{totalAmountNumber.toFixed(0)}
+          </div>
+          <div className="text-sm text-gray-500">รวมภาษีและค่าบริการ</div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <img
-            src="https://static.vecteezy.com/system/resources/previews/040/137/950/non_2x/minimalist-money-logo-design-template-cash-money-for-business-finance-money-investing-logo-vector.jpg"
-            alt="Cash"
-            className="w-10 h-10 object-contain rounded-md"
-          />
-          <p className="text-lg font-medium text-gray-800">เงินสด</p>
+        {/* วิธีการชำระเงิน */}
+        <div className="bg-white rounded-2xl p-6 shadow-lg mb-6">
+          <h3 className="text-xl font-bold text-gray-800 mb-6">
+            เลือกวิธีการชำระเงิน
+          </h3>
+
+          <div className="space-y-4">
+            {/* QR Code พร้อมเพย์ */}
+            <div
+              className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all transform ${
+                method === "qrcode"
+                  ? "border-[#FF6500] bg-gradient-to-br from-[#FFF2E0] to-white shadow-lg scale-[1.02]"
+                  : "border-gray-300 hover:border-[#FFB347] hover:shadow-md hover:scale-[1.01]"
+              }`}
+              onClick={() => setMethod("qrcode")}>
+              <div className="flex items-center gap-4">
+                <div
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    method === "qrcode" ? "border-[#FF6500]" : "border-gray-400"
+                  }`}>
+                  {method === "qrcode" && (
+                    <div className="w-3 h-3 bg-[#FF6500] rounded-full"></div>
+                  )}
+                </div>
+
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <QrCode size={24} className="text-blue-600" />
+                </div>
+
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-800">QR พร้อมเพย์</h4>
+                  <p className="text-sm text-gray-600">
+                    สแกน QR Code เพื่อชำระเงิน
+                  </p>
+                </div>
+
+                {method === "qrcode" && (
+                  <CheckCircle2 size={24} className="text-[#FF6500]" />
+                )}
+              </div>
+            </div>
+
+            {/* เงินสด */}
+            <div
+              className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all transform ${
+                method === "cash"
+                  ? "border-[#FF6500] bg-gradient-to-br from-[#FFF2E0] to-white shadow-lg scale-[1.02]"
+                  : "border-gray-300 hover:border-[#FFB347] hover:shadow-md hover:scale-[1.01]"
+              }`}
+              onClick={() => setMethod("cash")}>
+              <div className="flex items-center gap-4">
+                <div
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    method === "cash" ? "border-[#FF6500]" : "border-gray-400"
+                  }`}>
+                  {method === "cash" && (
+                    <div className="w-3 h-3 bg-[#FF6500] rounded-full"></div>
+                  )}
+                </div>
+
+                <div className="p-3 bg-green-100 rounded-xl">
+                  <Banknote size={24} className="text-green-600" />
+                </div>
+
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-800">เงินสด</h4>
+                  <p className="text-sm text-gray-600">ชำระเงินสดที่หน้าร้าน</p>
+                </div>
+
+                {method === "cash" && (
+                  <CheckCircle2 size={24} className="text-[#FF6500]" />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ปุ่มชำระเงิน */}
+        <div className="space-y-3">
+          <button
+            disabled={!method}
+            onClick={confirmPayment}
+            className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform ${
+              method
+                ? "bg-gradient-to-r from-[#FFB347] to-[#FF6500] hover:from-[#FF6500] hover:to-[#E55A00] text-white shadow-lg hover:scale-105"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}>
+            {method === "qrcode"
+              ? "สร้าง QR Code"
+              : method === "cash"
+              ? "ยืนยันการสั่ง"
+              : "เลือกวิธีชำระเงิน"}
+          </button>
+
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all">
+            ยกเลิก
+          </button>
         </div>
       </div>
-    </div>
 
-    <div className="mt-8 flex justify-center gap-6">
-      <button
-        className="px-6 py-3 bg-[#FFB566] text-white rounded-xl font-medium hover:bg-[#FFA559] transition"
-        onClick={() => navigate(-1)}
-      >
-        ยกเลิก
-      </button>
-      <button
-        disabled={!method}
-        onClick={confirmPayment}
-        className={`px-6 py-3 rounded-xl font-medium transition ${
-          method
-            ? "bg-[#FF6500] text-white hover:bg-[#FFA559]"
-            : "bg-gray-200 text-gray-400 cursor-not-allowed"
-        }`}
-      >
-        ชำระเงิน
-      </button>
-    </div>
-  </div>
+      {/* QR Code Popup */}
+      {showQrPopup && generatedQrCodeUrl && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-[#FF6500]">
+                สแกนเพื่อชำระเงิน
+              </h3>
+              <button
+                onClick={() => setShowQrPopup(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X size={24} className="text-gray-500" />
+              </button>
+            </div>
 
-  {/* QR Code Popup */}
-  {showQrPopup && generatedQrCodeUrl && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-3xl shadow-xl p-6 w-80 text-center">
-        <h3 className="text-xl font-bold mb-4 text-[#FF6500]">สแกนเพื่อชำระเงิน</h3>
-        <p className="text-gray-600 mb-2">
-          Order ID: {order.id} | ยอดเงิน: ฿{totalAmountNumber.toFixed(2)}
-        </p>
-        <img
-          src={generatedQrCodeUrl}
-          alt="PromptPay QR"
-          className="mx-auto mb-4 w-48 h-48 object-cover"
-        />
-        <button
-          className="px-6 py-2 bg-[#FF6500] text-white rounded-xl hover:bg-[#FFA559] transition"
-          onClick={() => setShowQrPopup(false)}
-        >
-          ปิด
-        </button>
-      </div>
-    </div>
-  )}
-</div>
+            <div className="text-center mb-4">
+              <div className="text-sm text-gray-600 mb-2">
+                Order #{order.id}
+              </div>
+              <div className="text-2xl font-bold text-[#FF6500]">
+                ฿{totalAmountNumber.toFixed(0)}
+              </div>
+            </div>
 
+            <div className="bg-gray-50 rounded-xl p-4 mb-4">
+              <img
+                src={generatedQrCodeUrl}
+                alt="PromptPay QR"
+                className="mx-auto w-48 h-48 object-cover rounded-lg"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleManualConfirm}
+                className="w-full py-3 bg-gradient-to-r from-[#FFB347] to-[#FF6500] hover:from-[#FF6500] hover:to-[#E55A00] text-white rounded-xl font-semibold transition-all">
+                ยืนยันการชำระเงิน
+              </button>
+              <button
+                onClick={() => setShowQrPopup(false)}
+                className="w-full py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all">
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

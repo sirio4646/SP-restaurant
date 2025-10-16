@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -20,6 +20,7 @@ import DashboardPage from "../admin/pages/DashboardPage";
 import OrdersPage from "../admin/pages/OrdersPage";
 import EmployeesPage from "../admin/pages/EmployeesPage";
 import MenusPage from "../admin/pages/MenusPage";
+import AdminTableManagePage from "../admin/pages/AdminTableManagePage";
 import LoginPage from "../admin/pages/login/Login";
 import RegisterPage from "../admin/pages/login/Register";
 
@@ -44,6 +45,7 @@ function Sidebar() {
     { name: "Orders", path: "/admin/orders" },
     { name: "Employees", path: "/admin/employees" },
     { name: "Menus", path: "/admin/menus" },
+    { name: "Tables", path: "/admin/tables" },
   ];
 
   return (
@@ -63,8 +65,7 @@ function Sidebar() {
                 isActive
                   ? "bg-[#FF6500] text-white shadow-md"
                   : "text-gray-300 hover:bg-gray-800 hover:text-[#FF6500]"
-              }`}
-            >
+              }`}>
               {link.name}
             </a>
           );
@@ -161,6 +162,10 @@ export default function App() {
                 <Route path="/admin/orders" element={<OrdersPage />} />
                 <Route path="/admin/employees" element={<EmployeesPage />} />
                 <Route path="/admin/menus" element={<MenusPage />} />
+                <Route
+                  path="/admin/tables"
+                  element={<AdminTableManagePage />}
+                />
               </>
             )}
 

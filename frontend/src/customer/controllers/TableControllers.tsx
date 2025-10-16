@@ -1,52 +1,83 @@
-// controllers/TableControllers.ts
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { TableService } from "../services/TableService";
+import type { Table } from "../services/TableService";
 
-// type ของโต๊ะ
-export type TableInfo = {
-  id: number;
-  status: "free" | "occupied";
-  selected?: boolean;
-};
+export const useTableController = () => {
+  const [tables, setTables] = useState<Table[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export function useTableController(total: number = 20) {
-  const navigate = useNavigate();
-  const [tables, setTables] = useState<TableInfo[]>(() =>
-    Array.from({ length: total }, (_, i) => ({
-      id: i + 1,
-      status: Math.random() < 0.25 ? "occupied" : "free",
-      selected: false,
-    }))
-  );
-
-  // toggle สถานะโต๊ะ
-  const toggleTable = (id: number, p0: boolean) => {
-    setTables((prev) =>
-      prev.map((t) =>
-        t.id === id && t.status === "free"
-          ? { ...t, selected: !t.selected }
-          : t
-      )
-    );
-  };
-
-
-  // confirmBooking
-  const confirmBooking = () => {
-    const booked = tables.filter((t) => t.selected);
-    if (booked.length === 0) {
-      alert("กรุณาเลือกโต๊ะก่อน");
-      return;
+  const fetchTables = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const tablesData = await TableService.getTables();
+      setTables(tablesData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch tables");
+    } finally {
+      setLoading(false);
     }
-
-    setTables((prev) =>
-      prev.map((t) =>
-        t.selected ? {...t, status: "occupied", selected: false} : t
-      )
-    );
-    alert(`คุณจอง ${booked.length} โต๊ะเรียบร้อยแล้ว`);
-    navigate("/order-food");
   };
 
-  return { tables, toggleTable, confirmBooking };
-}
+  const updateTableInState = (tableId: number, status: Table["status"]) => {
+    setTables((prev) =>
+      prev.map((table) => (table.id === tableId ? { ...table, status } : table))
+    );
+  };
+
+  const handleTableOperation = async (
+    operation: () => Promise<void>,
+    tableId: number,
+    newStatus: Table["status"],
+    errorMessage: string
+  ) => {
+    try {
+      await operation();
+      updateTableInState(tableId, newStatus);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : errorMessage);
+      throw err;
+    }
+  };
+
+  const occupyTable = (tableId: number) =>
+    handleTableOperation(
+      () => TableService.occupyTable(tableId),
+      tableId,
+      "occupied",
+      "Failed to occupy table"
+    );
+
+  const updateTableStatus = (tableId: number, status: string) =>
+    handleTableOperation(
+      () => TableService.updateTableStatus(tableId, status),
+      tableId,
+      status as Table["status"],
+      "Failed to update table"
+    );
+
+  const freeTable = (tableId: number) =>
+    handleTableOperation(
+      () => TableService.freeTable(tableId),
+      tableId,
+      "free",
+      "Failed to free table"
+    );
+
+  useEffect(() => {
+    fetchTables();
+    const interval = setInterval(fetchTables, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return {
+    tables,
+    loading,
+    error,
+    updateTableStatus,
+    occupyTable,
+    freeTable,
+    refreshTables: fetchTables,
+  };
+};

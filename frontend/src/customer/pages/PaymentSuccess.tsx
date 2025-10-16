@@ -1,57 +1,43 @@
-import React from 'react';
-import { Button, Typography, Box, Container, Paper } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import "../../css/PaymentSuccess.css";
-const PaymentSuccess: React.FC = () => {
-    const navigate = useNavigate();
+import { useNavigate } from "react-router-dom";
+import { CheckCircle2, Home } from "lucide-react";
 
-    const handleGoHome = () => {
-        navigate('/');
-    };
+export default function PaymentSuccess() {
+  const navigate = useNavigate();
 
-    return (
-        <Container maxWidth="sm" sx={{ mt: 10 }}>
-            <Paper
-                elevation={4}
-                sx={{
-                    p: 5,
-                    textAlign: 'center',
-                    borderRadius: 4,
-                    backgroundColor: '#F2F0EF',
-                }}
-            >
-                {/* วงกลม checkmark พร้อมแอนิเมชัน */}
-                <Box sx={{ position: 'relative', display: 'inline-block', mb: 3 }}>
-                    <span className="checkmark"></span>
-                </Box>
+  return (
+    <div
+      className="min-h-screen bg-gray-50 flex items-center justify-center p-6"
+      style={{ fontFamily: "Carlito, sans-serif" }}>
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+        {/* Success Icon */}
+        <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+          <CheckCircle2 size={48} className="text-white" />
+        </div>
 
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2e7d32', mb: 2 }}>
-                    ชำระเงินสำเร็จ
-                </Typography>
+        {/* Success Message */}
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">
+          ชำระเงินสำเร็จ!
+        </h1>
 
-                <Typography variant="body1" sx={{ color: '#555', mb: 4 }}>
-                    ขอบคุณที่ใช้บริการ ระบบได้บันทึกการชำระเงินของคุณเรียบร้อยแล้ว
-                </Typography>
+        {/* Details */}
+        <div className="bg-green-50 rounded-xl p-4 mb-6">
+          <p className="text-gray-700">
+            ขอบคุณที่ใช้บริการ ระบบได้บันทึกการชำระเงินของคุณเรียบร้อยแล้ว
+            <br />
+            <span className="font-semibold text-green-700">
+              กรุณารอการเสิร์ฟอาหาร
+            </span>
+          </p>
+        </div>
 
-                <Button
-                    variant="contained"
-                    sx={{
-                        backgroundColor: '#4caf50',
-                        '&:hover': { backgroundColor: '#43a047' },
-                        px: 4,
-                        py: 1.5,
-                        fontWeight: 'bold',
-                        borderRadius: '30px',
-                    }}
-                    onClick={handleGoHome}
-                >
-                    กลับไปหน้าหลัก
-                </Button>
-            </Paper>
-
-
-        </Container>
-    );
-};
-
-export default PaymentSuccess;
+        {/* Action Button */}
+        <button
+          onClick={() => navigate("/")}
+          className="w-full bg-gradient-to-r from-[#FFB347] to-[#FF6500] hover:from-[#FF6500] hover:to-[#E55A00] text-white font-bold py-4 rounded-xl transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2">
+          <Home size={20} />
+          กลับไปหน้าหลัก
+        </button>
+      </div>
+    </div>
+  );
+}
