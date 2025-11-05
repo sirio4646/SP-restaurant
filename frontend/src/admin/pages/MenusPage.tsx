@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../store/authStore";
 import api from "../../utils/axiosConfig";
 import {
   Edit3,
@@ -29,7 +27,7 @@ type SortOrder = "asc" | "desc" | null;
 const PREDEFINED_CATEGORIES = [
   "อาหารจานเดียว",
   "เส้น",
-  "ซุป",
+  "แกง",
   "เครื่องดื่ม",
   "ของหวาน",
 ];
@@ -45,11 +43,9 @@ export default function MenusPage() {
     null
   );
   const [categorySortOrder, setCategorySortOrder] = useState<SortOrder>(null);
+  const [priceSortOrder, setPriceSortOrder] = useState<SortOrder>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [menuToDelete, setMenuToDelete] = useState<Menu | null>(null);
-
-  const navigate = useNavigate();
-  const logout = useAuthStore((state) => state.logout);
 
   const fetchMenus = async () => {
     try {
@@ -57,9 +53,6 @@ export default function MenusPage() {
       setMenus(response.data);
     } catch (error: any) {
       console.error("Failed to fetch menus:", error);
-      if (error.response?.status === 401) {
-        handleLogout();
-      }
     }
   };
 
@@ -71,21 +64,30 @@ export default function MenusPage() {
     setCategorySortOrder(newSortOrder);
   };
 
+  const handlePriceSort = () => {
+    const newSortOrder: SortOrder =
+      priceSortOrder === null || priceSortOrder === "desc" ? "asc" : "desc";
+    setPriceSortOrder(newSortOrder);
+    // reset category sort when sorting by price (optional behavior)
+    setCategorySortOrder(null);
+  };
+
   const getSortedMenus = () => {
+    // If sorting by price is active, sort by numeric price
+    if (priceSortOrder) {
+      return [...menus].sort((a, b) => {
+        const pa = parseFloat(a.base_price || "0");
+        const pb = parseFloat(b.base_price || "0");
+        return priceSortOrder === "asc" ? pa - pb : pb - pa;
+      });
+    }
+
     if (!categorySortOrder) return menus;
 
     return [...menus].sort((a, b) => {
       const comparison = a.category.localeCompare(b.category, "th");
       return categorySortOrder === "asc" ? comparison : -comparison;
     });
-  };
-
-  const handleLogout = () => {
-    ["jwtToken", "username", "role"].forEach((key) =>
-      localStorage.removeItem(key)
-    );
-    logout();
-    navigate("/login");
   };
 
   const validateMenuData = () => {
@@ -197,6 +199,18 @@ export default function MenusPage() {
   const renderSortIcon = () => {
     if (categorySortOrder === "asc") return <ChevronUp size={14} />;
     if (categorySortOrder === "desc") return <ChevronDown size={14} />;
+
+    return (
+      <div className="flex flex-col">
+        <ChevronUp size={10} className="-mb-1" />
+        <ChevronDown size={10} />
+      </div>
+    );
+  };
+
+  const renderPriceSortIcon = () => {
+    if (priceSortOrder === "asc") return <ChevronUp size={14} />;
+    if (priceSortOrder === "desc") return <ChevronDown size={14} />;
 
     return (
       <div className="flex flex-col">
@@ -332,6 +346,8 @@ export default function MenusPage() {
 
   useEffect(() => {
     fetchMenus();
+    // ตั้งค่าการเรียงตั้งแต่แรก
+    setCategorySortOrder("desc");
   }, []);
 
   const stats = getMenuStats();
@@ -344,11 +360,6 @@ export default function MenusPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-[#FF6500]">จัดการเมนู</h1>
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl shadow transition">
-          Logout
-        </button>
       </div>
 
       {/* Statistics */}
@@ -468,7 +479,9 @@ export default function MenusPage() {
             <table className="w-full table-auto">
               <thead className="bg-[#FF6500]/10">
                 <tr className="text-gray-700 text-sm font-semibold text-left">
+                  {/* ลบบรรทัดนี้ออก
                   <th className="py-4 px-6">รหัส</th>
+                  */}
                   <th className="py-4 px-6">รูป</th>
                   <th className="py-4 px-6">ชื่อเมนู</th>
                   <th className="py-4 px-6">รายละเอียด</th>
@@ -493,7 +506,27 @@ export default function MenusPage() {
                       </button>
                     </div>
                   </th>
-                  <th className="py-4 px-6">ราคา</th>
+                  <th className="py-4 px-6">
+                    <div className="flex items-center gap-2">
+                      <span>ราคา</span>
+                      <button
+                        onClick={handlePriceSort}
+                        className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
+                          priceSortOrder
+                            ? "bg-[#FF6500] text-white"
+                            : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+                        }`}
+                        title={
+                          priceSortOrder === "asc"
+                            ? "เรียงจากน้อยไปมาก"
+                            : priceSortOrder === "desc"
+                            ? "เรียงจากมากไปน้อย"
+                            : "เรียงราคา"
+                        }>
+                        {renderPriceSortIcon()}
+                      </button>
+                    </div>
+                  </th>
                   <th className="py-4 px-6">สถานะ</th>
                   <th className="py-4 px-6 text-center">การจัดการ</th>
                 </tr>
@@ -505,9 +538,11 @@ export default function MenusPage() {
                     className={`border-b hover:bg-[#FFF0E0] transition ${
                       index % 2 === 0 ? "bg-white" : "bg-gray-50"
                     }`}>
+                    {/* ลบบรรทัดนี้ออก
                     <td className="py-4 px-6 font-semibold text-[#FF6500]">
                       {menu.id}
                     </td>
+                    */}
                     <td className="py-4 px-6">{renderMenuImage(menu)}</td>
                     <td className="py-4 px-6">
                       {renderEditableField(

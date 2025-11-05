@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Unlock } from "lucide-react";
 import { formatDateTime } from "../../utils/formatDateTime";
 import TableCard from "../../components/TableCard";
 import { useTableController } from "../controllers/TableControllers";
 
 export default function TableReservationPage() {
   const [now, setNow] = useState(new Date());
-  const { tables, loading, error, occupyTable, refreshTables } =
+  const { tables, loading, error, occupyTable, openAllTables } =
     useTableController();
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<string | null>(null);
@@ -70,6 +70,22 @@ export default function TableReservationPage() {
     }
   };
 
+  const handleOpenAllTables = async () => {
+    if (!confirm("คุณต้องการเปิดโต๊ะทั้งหมดหรือไม่?")) {
+      return;
+    }
+
+    try {
+      const result = await openAllTables();
+      showSnackbar(result.message, "success");
+    } catch (error: any) {
+      showSnackbar(
+        error.message || "ไม่สามารถเปิดโต๊ะได้ กรุณาลองใหม่",
+        "error"
+      );
+    }
+  };
+
   const getSnackbarColor = () => {
     switch (snackbarType) {
       case "success":
@@ -105,10 +121,10 @@ export default function TableReservationPage() {
           <div>{error}</div>
         </div>
         <button
-          onClick={refreshTables}
+          onClick={handleOpenAllTables}
           className="bg-gradient-to-r from-[#FFB347] to-[#FF6500] hover:from-[#FF6500] hover:to-[#E55A00] text-white px-6 py-3 rounded-xl shadow-lg transition font-semibold flex items-center gap-2">
-          <RefreshCw size={20} />
-          ลองใหม่
+          <Unlock size={20} />
+          เปิดโต๊ะทั้งหมด
         </button>
       </div>
     );
@@ -133,10 +149,10 @@ export default function TableReservationPage() {
             </div>
           </div>
           <button
-            onClick={refreshTables}
+            onClick={handleOpenAllTables}
             className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-xl transition-all hover:scale-105 shadow-lg"
-            title="รีเฟรชข้อมูลโต๊ะ">
-            <RefreshCw size={20} />
+            title="เปิดโต๊ะทั้งหมด">
+            <Unlock size={20} />
           </button>
         </div>
       </div>

@@ -36,7 +36,9 @@ const getRedirectPath = (isCustomer: boolean) =>
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -73,6 +75,40 @@ export default function LoginPage() {
     }
   };
 
+  const handleRegister = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!username || !password || !email) {
+      alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
+        username,
+        password,
+        email,
+      });
+
+      alert("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
+      setIsRegistering(false);
+      setUsername("");
+      setPassword("");
+      setEmail("");
+    } catch (err: any) {
+      const errorMessage =
+        err.response?.status === 409
+          ? "ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้แล้ว"
+          : "เกิดข้อผิดพลาดในการสมัครสมาชิก";
+
+      alert(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div
       className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center p-4"
@@ -82,11 +118,15 @@ export default function LoginPage() {
       }}>
       <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">เข้าสู่ระบบ</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {isRegistering ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+          </h1>
           <p className="text-gray-600">ระบบจัดการร้านอาหาร</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form
+          onSubmit={isRegistering ? handleRegister : handleLogin}
+          className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               ชื่อผู้ใช้
@@ -100,6 +140,22 @@ export default function LoginPage() {
               required
             />
           </div>
+
+          {isRegistering && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                อีเมล
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#FF6500] transition"
+                placeholder="กรอกอีเมล"
+                required
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -123,9 +179,30 @@ export default function LoginPage() {
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-gradient-to-r from-[#FFB347] to-[#FF6500] hover:from-[#FF6500] hover:to-[#E55A00] hover:scale-105 shadow-lg"
             }`}>
-            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            {loading
+              ? isRegistering
+                ? "กำลังสมัครสมาชิก..."
+                : "กำลังเข้าสู่ระบบ..."
+              : isRegistering
+              ? "สมัครสมาชิก"
+              : "เข้าสู่ระบบ"}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => {
+              setIsRegistering(!isRegistering);
+              setUsername("");
+              setPassword("");
+              setEmail("");
+            }}
+            className="text-[#FF6500] hover:text-[#E55A00] font-medium transition">
+            {isRegistering
+              ? "มีบัญชีแล้ว? เข้าสู่ระบบ"
+              : "ยังไม่มีบัญชี? สมัครสมาชิก"}
+          </button>
+        </div>
       </div>
     </div>
   );

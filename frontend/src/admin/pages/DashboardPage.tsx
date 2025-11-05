@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../store/authStore";
 import api from "../../utils/axiosConfig";
 import { Card, Title, Flex, Metric } from "@tremor/react";
 import {
@@ -54,21 +52,23 @@ export default function DashboardPage() {
   const [categorySales, setCategorySales] = useState<CategorySales[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
 
-  const navigate = useNavigate();
-  const logout = useAuthStore((state) => state.logout);
-
   const fetchDashboard = async () => {
     try {
-      const response = await api.get("/admin/dashboard");
+      // หาวันที่ปัจจุบัน
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const monthStr = `${year}-${month}`;
+
+      // ส่ง month=YYYY-MM ไปที่ backend
+      const response = await api.get(`/admin/dashboard?month=${monthStr}`);
       const { total_sales, top_items, category_sales } = response.data;
 
       setTotalSales(total_sales);
       setTopItems(top_items);
       setCategorySales(category_sales);
-    } catch (err: any) {
-      if (err.response?.status === 401) {
-        handleLogout();
-      }
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
     }
   };
 
@@ -99,14 +99,6 @@ export default function DashboardPage() {
         total_amount: 0,
       })),
     ];
-  };
-
-  const handleLogout = () => {
-    ["jwtToken", "username", "role"].forEach((key) =>
-      localStorage.removeItem(key)
-    );
-    logout();
-    navigate("/login");
   };
 
   const getRankStyle = (index: number) => RANK_STYLES[index] || RANK_STYLES[3];
@@ -141,20 +133,15 @@ export default function DashboardPage() {
       className="p-6 space-y-6 bg-gray-50 min-h-screen text-gray-800"
       style={{ fontFamily: "Carlito, sans-serif" }}>
       {/* Header */}
-      <Flex justifyContent="between" alignItems="center" className="mb-4">
+      <div className="mb-4">
         <Title className="text-2xl font-bold text-[#FF6500]">Dashboard</Title>
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl shadow transition">
-          Logout
-        </button>
-      </Flex>
+      </div>
 
       {/* Total Sales */}
       <Card className="bg-gradient-to-r from-[#FFB347] to-[#FF6500] text-white shadow-xl rounded-2xl p-4">
         <Flex justifyContent="between" alignItems="center">
           <div>
-            <Title className="text-white">ยอดขายรวม</Title>
+            <Title className="text-white">ยอดขายรวมประจำเดือนปัจจุบัน</Title>
             <Metric className="text-4xl font-bold mt-2">
               {totalSales.toLocaleString()} บาท
             </Metric>
@@ -188,7 +175,7 @@ export default function DashboardPage() {
                         {item.name}
                       </h3>
                       <p className="text-gray-600 text-sm">
-                        ขายได้ {item.total_quantity} จาน
+                        ขายได้ {item.total_quantity} ชิ้น
                       </p>
                     </div>
                   </div>
@@ -202,7 +189,7 @@ export default function DashboardPage() {
                       {Math.round(
                         item.total_amount / item.total_quantity
                       ).toLocaleString()}
-                      /จาน
+                      /ชิ้น
                     </div>
                   </div>
                 </div>

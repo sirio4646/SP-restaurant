@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import "react";
 import type { JSX } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../store/authStore";
 import api from "../../utils/axiosConfig";
 import { Edit3, Trash2, Save, X, UserPlus } from "lucide-react";
 
@@ -30,9 +28,6 @@ export default function EmployeesPage() {
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null
   );
-
-  const navigate = useNavigate();
-  const logout = useAuthStore((state) => state.logout);
 
   const fetchEmployees = async () => {
     try {
@@ -126,14 +121,6 @@ export default function EmployeesPage() {
     setEmployeeToDelete(null);
   };
 
-  const handleLogout = () => {
-    ["jwtToken", "username", "role"].forEach((key) =>
-      localStorage.removeItem(key)
-    );
-    logout();
-    navigate("/login");
-  };
-
   const updateNewEmployee = (field: keyof Employee, value: string) => {
     setNewEmployee((prev) => ({ ...prev, [field]: value }));
   };
@@ -174,7 +161,7 @@ export default function EmployeesPage() {
     type: string = "text",
     formatDisplay?: (val: string) => string | JSX.Element
   ) => {
-    if (editingId && editedEmployee.id === editingId) {
+    if (editingId !== null) {
       return (
         <input
           type={type}
@@ -201,11 +188,6 @@ export default function EmployeesPage() {
         <h1 className="text-2xl font-bold text-[#FF6500]">
           จัดการข้อมูลพนักงาน
         </h1>
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl shadow transition">
-          Logout
-        </button>
       </div>
 
       {/* Statistics */}
@@ -286,7 +268,6 @@ export default function EmployeesPage() {
             <table className="w-full table-auto">
               <thead className="bg-[#FF6500]/10">
                 <tr className="text-gray-700 text-sm font-semibold text-left">
-                  <th className="py-4 px-6">รหัส</th>
                   <th className="py-4 px-6">ชื่อเต็ม</th>
                   <th className="py-4 px-6">ตำแหน่ง</th>
                   <th className="py-4 px-6">เบอร์โทร</th>
@@ -302,42 +283,38 @@ export default function EmployeesPage() {
                     className={`border-b hover:bg-[#FFF0E0] transition ${
                       index % 2 === 0 ? "bg-white" : "bg-gray-50"
                     }`}>
-                    <td className="py-4 px-6 font-semibold text-[#FF6500]">
-                      {emp.id}
+                    <td className="py-4 px-6">
+                      {editingId === emp.id
+                        ? renderEditableCell(emp.full_name, "full_name")
+                        : emp.full_name}
                     </td>
 
                     <td className="py-4 px-6">
-                      {renderEditableCell(emp.full_name, "full_name")}
+                      {editingId === emp.id
+                        ? renderEditableCell(emp.position, "position")
+                        : emp.position}
                     </td>
 
                     <td className="py-4 px-6">
-                      {renderEditableCell(emp.position, "position")}
+                      {editingId === emp.id
+                        ? renderEditableCell(emp.phone_number, "phone_number")
+                        : emp.phone_number}
                     </td>
 
                     <td className="py-4 px-6">
-                      {renderEditableCell(emp.phone_number, "phone_number")}
-                    </td>
-
-                    <td className="py-4 px-6">
-                      {renderEditableCell(
-                        emp.salary,
-                        "salary",
-                        "number",
-                        (val) => (
-                          <span className="font-bold text-green-600">
-                            ฿{parseFloat(val || "0").toLocaleString()}
-                          </span>
-                        )
+                      {editingId === emp.id ? (
+                        renderEditableCell(emp.salary, "salary", "number")
+                      ) : (
+                        <span className="font-bold text-green-600">
+                          ฿{parseFloat(emp.salary || "0").toLocaleString()}
+                        </span>
                       )}
                     </td>
 
                     <td className="py-4 px-6">
-                      {renderEditableCell(
-                        emp.hire_date,
-                        "hire_date",
-                        "date",
-                        (val) => new Date(val).toLocaleDateString("th-TH")
-                      )}
+                      {editingId === emp.id
+                        ? renderEditableCell(emp.hire_date, "hire_date", "date")
+                        : new Date(emp.hire_date).toLocaleDateString("th-TH")}
                     </td>
 
                     <td className="py-4 px-6 text-center">

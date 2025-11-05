@@ -51,11 +51,43 @@ export default function PaymentPage() {
     }
   };
 
-  const handleCashPayment = () => {
-    alert("ออเดอร์ถูกสร้างแล้ว");
-    navigate("/payment-success");
+  // แก้ไขฟังก์ชัน handleCashPayment
+  const handleCashPayment = async () => {
+    try {
+      await api.patch(`/orders/${order?.id}`, {
+        payment_status: "paid",
+        payment_method: "cash",
+        qr_code_url: null,
+      });
+      navigate("/payment-success");
+    } catch (err) {
+      console.error("Failed to process cash payment:", err);
+      alert("เกิดข้อผิดพลาดในการชำระเงิน");
+    }
   };
 
+  // แก้ไขฟังก์ชัน handleManualConfirm
+  const handleManualConfirm = async () => {
+    if (!order || !generatedQrCodeUrl) {
+      alert("ไม่พบข้อมูลออเดอร์หรือ QR Code");
+      return;
+    }
+
+    try {
+      await api.patch(`/orders/${order.id}`, {
+        payment_status: "pending_verification",
+        payment_method: "qr_code",
+        qr_code_url: generatedQrCodeUrl,
+      });
+      setShowQrPopup(false);
+      navigate("/payment-success");
+    } catch (err) {
+      console.error("Failed to process QR payment:", err);
+      alert("เกิดข้อผิดพลาดในการชำระเงิน");
+    }
+  };
+
+  // แก้ไขฟังก์ชัน confirmPayment
   const confirmPayment = () => {
     if (!order || !method) return;
 
@@ -70,25 +102,6 @@ export default function PaymentPage() {
       setGeneratedQrCodeUrl(url);
       setShowQrPopup(true);
     }
-  };
-
-  const handleManualConfirm = async () => {
-    if (!order) {
-      alert("ไม่พบข้อมูลออเดอร์");
-      return;
-    }
-
-    try {
-      await api.patch(`/orders/${order.id}`, {
-        payment_status: "pending_verification",
-        payment_method: "qrcode",
-      });
-    } catch (err: any) {
-      console.error("Failed to update payment status:", err.response?.data);
-    }
-
-    setShowQrPopup(false);
-    navigate("/payment-success");
   };
 
   useEffect(() => {
@@ -324,3 +337,20 @@ export default function PaymentPage() {
     </div>
   );
 }
+
+export const processPayment = async (
+  orderId: number,
+  paymentMethod: string,
+  qrCodeUrl?: string
+) => {
+  try {
+    const response = await api.post(`/orders/${orderId}/payment`, {
+      payment_method: paymentMethod,
+      qr_code_url: qrCodeUrl,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    throw error;
+  }
+};

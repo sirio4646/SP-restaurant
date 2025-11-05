@@ -192,9 +192,18 @@ export default function CartPage({ cart, setCart }: Props) {
                             <Minus size={16} />
                           </button>
 
-                          <div className="w-16 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-bold text-gray-800">
-                            {item.quantity}
-                          </div>
+                          {/* เปลี่ยนจาก div เป็น input */}
+                          <input
+                            type="number"
+                            min={1}
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const val = Math.max(Number(e.target.value), 1);
+                              updateItem(item.menu_id, val, item.notes);
+                            }}
+                            className="w-16 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-bold text-gray-800 text-center border border-gray-300"
+                            style={{ appearance: "textfield" }}
+                          />
 
                           <button
                             onClick={() =>

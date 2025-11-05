@@ -1,5 +1,9 @@
 // components/TableCard.tsx
-import type { TableInfo } from "../customer/controllers/TableControllers";
+// Local TableInfo type: only the fields this component uses
+type TableInfo = {
+  id: number;
+  status: string;
+};
 
 interface Props {
   table: TableInfo;

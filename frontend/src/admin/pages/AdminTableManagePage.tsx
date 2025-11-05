@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../store/authStore";
 import api from "../../utils/axiosConfig";
 import { Edit3, Check, X } from "lucide-react";
 
@@ -37,9 +35,6 @@ export default function AdminTableManagePage() {
   });
   const [loading, setLoading] = useState(true);
 
-  const navigate = useNavigate();
-  const logout = useAuthStore((state) => state.logout);
-
   const showSnackbar = (
     message: string,
     type: SnackbarState["type"] = "info"
@@ -58,14 +53,6 @@ export default function AdminTableManagePage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    ["jwtToken", "username", "role", "restaurant_id"].forEach((key) =>
-      localStorage.removeItem(key)
-    );
-    logout();
-    navigate("/login");
   };
 
   const validateTableData = () => {
@@ -201,11 +188,6 @@ export default function AdminTableManagePage() {
           <h1 className="text-2xl font-bold text-[#FF6500]">จัดการโต๊ะ</h1>
           <p className="text-gray-600 mt-1">จัดการสถานะโต๊ะทั้งหมดในร้าน</p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl shadow transition">
-          Logout
-        </button>
       </div>
 
       {/* Statistics */}

@@ -41,6 +41,40 @@ export const useTableController = () => {
     }
   };
 
+  const openAllTables = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const occupiedTables = tables.filter(
+        (table) => table.status === "occupied"
+      );
+
+      if (occupiedTables.length === 0) {
+        return { success: true, message: "โต๊ะทั้งหมดว่างอยู่แล้ว" };
+      }
+
+      const updatePromises = occupiedTables.map((table) =>
+        TableService.updateTableStatus(table.id, "free")
+      );
+
+      await Promise.all(updatePromises);
+      await fetchTables();
+
+      return {
+        success: true,
+        message: `เปิดโต๊ะทั้งหมดแล้ว (${occupiedTables.length} โต๊ะ)`,
+      };
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to open all tables"
+      );
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const occupyTable = (tableId: number) =>
     handleTableOperation(
       () => TableService.occupyTable(tableId),
@@ -78,6 +112,6 @@ export const useTableController = () => {
     updateTableStatus,
     occupyTable,
     freeTable,
-    refreshTables: fetchTables,
+    openAllTables,
   };
 };

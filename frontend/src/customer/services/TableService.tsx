@@ -23,7 +23,6 @@ export const TableService = {
 
   async updateTableStatus(tableId: number, status: string): Promise<void> {
     try {
-      // ตรวจสอบ status ที่ใช้ได้
       if (status !== "free" && status !== "occupied") {
         throw new Error('Invalid status. Use "free" or "occupied" only.');
       }
@@ -52,5 +51,40 @@ export const TableService = {
 
   async freeTable(tableId: number): Promise<void> {
     return this.updateTableStatus(tableId, "free");
+  },
+
+  async openAllTables(): Promise<void> {
+    try {
+      const token = localStorage.getItem("token");
+
+      const tablesResponse = await fetch("/api/tables", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!tablesResponse.ok) {
+        throw new Error("Failed to fetch tables");
+      }
+
+      const tables = await tablesResponse.json();
+
+      const updatePromises = tables.map((table: any) =>
+        fetch(`/api/tables/${table.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: "free" }),
+        })
+      );
+
+      await Promise.all(updatePromises);
+    } catch (error) {
+      console.error("Error opening all tables:", error);
+      throw error;
+    }
   },
 };
